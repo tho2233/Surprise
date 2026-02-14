@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+html,body{
+  margin:0;
+  padding:0;
+  background:black;
+  overflow:hidden;
+  touch-action: manipulation;
+}
+canvas{
+  position:fixed;
+  top:0;
+  left:0;
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+let particles = [];
+let textParticles = [];
+let stars = [];
+let showSolidText = false;
+let solidAlpha = 0;
+let fadingOut = false;
+const gravity = 0.05;
+
+/* ⭐ BINTANG */
+function createStars(){
+  stars = [];
+  for(let i=0;i<200;i++){
+    stars.push({
+      x: Math.random()*canvas.width,
+      y: Math.random()*canvas.height,
+      size: Math.random()*2,
+      alpha: Math.random()
+    });
+  }
+}
+createStars();
+
+function drawStars(){
+  stars.forEach(s=>{
+    s.alpha += (Math.random()-0.5)*0.05;
+    if(s.alpha<0) s.alpha=0;
+    if(s.alpha>1) s.alpha=1;
+
+    ctx.beginPath();
+    ctx.arc(s.x,s.y,s.size,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,255,${s.alpha})`;
+    ctx.fill();
+  });
+}
+
+/* 🔊 SUARA */
+function playBoom(){
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type="sine";
+  osc.frequency.setValueAtTime(90,audioCtx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(40,audioCtx.currentTime+0.4);
+
+  gain.gain.setValueAtTime(1,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime+0.4);
+}
+
+/* ❤️ BENTUK HATI */
+function heart(t){
+  return {
+    x:16*Math.pow(Math.sin(t),3),
+    y:-(13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t))
+  };
+}
+
+function createExplosion(x,y){
+  playBoom();
+  showSolidText=false;
+  fadingOut=false;
+  solidAlpha=0;
+
+  for(let i=0;i<700;i++){
+    let t=Math.random()*Math.PI*2;
+    let h=heart(t);
+    particles.push({
+      x:x,
+      y:y,
+      vx:h.x*(Math.random()*0.4),
+      vy:h.y*(Math.random()*0.4),
+      alpha:1
+    });
+  }
+
+  createTextParticles(
+`Hai, Bestie cantikku 💖
+Semoga harimu seindah senyummu hari ini ✨`
+  );
+}
+
+/* ✨ TEKS PARTIKEL */
+function createTextParticles(text){
+  textParticles=[];
+
+  const off=document.createElement("canvas");
+  const offCtx=off.getContext("2d");
+  off.width=canvas.width;
+  off.height=canvas.height;
+
+  offCtx.fillStyle="white";
+  offCtx.font="bold 50px Arial";
+  offCtx.textAlign="center";
+
+  const lines=text.split("\n");
+  lines.forEach((line,i)=>{
+    offCtx.fillText(line,canvas.width/2,canvas.height/2+i*60);
+  });
+
+  const data=offCtx.getImageData(0,0,off.width,off.height).data;
+
+  for(let y=0;y<off.height;y+=5){
+    for(let x=0;x<off.width;x+=5){
+      let index=(y*off.width+x)*4;
+      if(data[index+3]>150){
+        textParticles.push({
+          x:canvas.width/2,
+          y:canvas.height/2,
+          tx:x,
+          ty:y,
+          alpha:1
+        });
+      }
+    }
+  }
+
+  setTimeout(()=>{ showSolidText=true; },1500);
+  setTimeout(()=>{ fadingOut=true; },4000);
+}
+
+/* 📱 TAP & CLICK */
+canvas.addEventListener("click",(e)=>{
+  createExplosion(e.clientX,e.clientY);
+});
+canvas.addEventListener("touchstart",(e)=>{
+  const t=e.touches[0];
+  createExplosion(t.clientX,t.clientY);
+});
+
+/* 🎬 ANIMASI */
+function animate(){
+  ctx.fillStyle="rgba(0,0,0,0.3)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  drawStars();
+
+  particles.forEach((p,i)=>{
+    p.vy+=gravity;
+    p.x+=p.vx;
+    p.y+=p.vy;
+    p.alpha-=0.008;
+
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,2,0,Math.PI*2);
+    ctx.fillStyle=`hsla(${Math.random()*360},100%,60%,${p.alpha})`;
+    ctx.fill();
+
+    if(p.alpha<=0) particles.splice(i,1);
+  });
+
+  textParticles.forEach((p,i)=>{
+    p.x+=(p.tx-p.x)*0.07;
+    p.y+=(p.ty-p.y)*0.07;
+    p.alpha-=0.003;
+
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,2,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,105,180,${p.alpha})`;
+    ctx.fill();
+
+    if(p.alpha<=0) textParticles.splice(i,1);
+  });
+
+  if(showSolidText){
+    if(!fadingOut){
+      solidAlpha+=0.02;
+      if(solidAlpha>1) solidAlpha=1;
+    } else {
+      solidAlpha-=0.01;
+      if(solidAlpha<0){
+        solidAlpha=0;
+        showSolidText=false;
+      }
+    }
+
+    ctx.globalAlpha=solidAlpha;
+    ctx.shadowBlur=25;
+    ctx.shadowColor="hotpink";
+    ctx.fillStyle="hotpink";
+    ctx.font="bold 50px Arial";
+    ctx.textAlign="center";
+
+    const lines=[
+      "Hai, Bestie cantikku 💖",
+      "Semoga harimu seindah senyummu hari ini ✨"
+    ];
+
+    lines.forEach((line,i)=>{
+      ctx.fillText(line,canvas.width/2,canvas.height/2+i*60);
+    });
+
+    ctx.shadowBlur=0;
+    ctx.globalAlpha=1;
+  }
+
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
+
+</body>
+</html>
