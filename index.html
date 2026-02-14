@@ -129,12 +129,15 @@ function createTextParticles(text){
   off.height=canvas.height;
 
   offCtx.fillStyle="white";
-  offCtx.font="bold 50px Arial";
+
+  const fontSize = Math.min(canvas.width * 0.06, 50); // RESPONSIVE
+  offCtx.font="bold "+fontSize+"px Arial";
+
   offCtx.textAlign="center";
 
   const lines=text.split("\n");
   lines.forEach((line,i)=>{
-    offCtx.fillText(line,canvas.width/2,canvas.height/2+i*60);
+    offCtx.fillText(line,canvas.width/2,canvas.height/2+i*(fontSize+10));
   });
 
   const data=offCtx.getImageData(0,0,off.width,off.height).data;
@@ -213,11 +216,12 @@ function animate(){
       }
     }
 
+    const fontSize = Math.min(canvas.width * 0.06, 50); // RESPONSIVE
     ctx.globalAlpha=solidAlpha;
     ctx.shadowBlur=25;
     ctx.shadowColor="hotpink";
     ctx.fillStyle="hotpink";
-    ctx.font="bold 50px Arial";
+    ctx.font="bold "+fontSize+"px Arial";
     ctx.textAlign="center";
 
     const lines=[
@@ -226,7 +230,7 @@ function animate(){
     ];
 
     lines.forEach((line,i)=>{
-      ctx.fillText(line,canvas.width/2,canvas.height/2+i*60);
+      ctx.fillText(line,canvas.width/2,canvas.height/2+i*(fontSize+10));
     });
 
     ctx.shadowBlur=0;
